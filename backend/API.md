@@ -26,3 +26,15 @@
     curl http://localhost/api/sensors/<id>/activity
 
     # return number of all timestamps after adding
+
+
+# Subject to change
+
+## subscribe to sensor activity in the last 10s/1m/10m
+
+  curl http://localhost/api/subscribe/{10s,1m,10m}
+
+  > data: [1234]
+  >
+  > data: [1234,4321]
+
