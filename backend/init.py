@@ -24,6 +24,7 @@ def get_all_sensors():
 @app.route('/api/sensors/<int:sensor>/activity')
 def add_sensor_data(sensor):
     from time import time
+    r.publish('chat',sensor)
     return json.dumps(int(r.rpush(sensor_namespace.format(sensor),time())))
 
 @app.route('/api/sensors/<int:sensor>/last')
@@ -36,6 +37,18 @@ def get_last_sensor_data(sensor):
 def get_all_sensor_data(sensor):
     q=r.lrange(sensor_namespace.format(sensor),0,-1)
     return json.dumps([ float(i.decode()) for i in q ])
+
+def activity_stream():
+    pubsub = r.pubsub()
+    pubsub.subscribe('chat')
+    # TODO: handle client disconnection.
+    for message in pubsub.listen():
+        if message['type'] == 'subscribe':
+            print("connected subscribers: %d"%message['data'])
+        else:
+            print(message)
+            yield 'data: %d\n\n' % int(message['data'].decode())
+    
 
 def event_stream(delta):
     # delta must be datetime.timedelta
@@ -61,6 +74,10 @@ def stream2():
 @app.route('/api/subscribe/10m')
 def stream3():
     return Response(event_stream(timedelta(minutes=10)),
+                          mimetype="text/event-stream")
+@app.route('/api/subscribe/live')
+def livestream():
+    return Response(activity_stream(),
                           mimetype="text/event-stream")
 if __name__ == '__main__':
     app.debug =True
