@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from flask import Flask,Response
+from time import time
 from datetime import datetime,timedelta
 import json
 app = Flask(__name__)
@@ -23,9 +24,11 @@ def get_all_sensors():
 
 @app.route('/api/sensors/<int:sensor>/activity')
 def add_sensor_data(sensor):
-    from time import time
     r.publish('chat',sensor)
     return json.dumps(int(r.rpush(sensor_namespace.format(sensor),time())))
+@app.route('/api/time')
+def current_time():
+    return json.dumps(float(time()))
 
 @app.route('/api/sensors/<int:sensor>/last')
 def get_last_sensor_data(sensor):

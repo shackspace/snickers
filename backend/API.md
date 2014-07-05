@@ -28,6 +28,12 @@
     # return number of all timestamps after adding
 
 
+#  Get the server time
+
+    curl http://localhost/api/time
+
+    > 123456.12345
+
 # Subject to change
 
 ## subscribe to sensor activity in the last 10s/1m/10m
