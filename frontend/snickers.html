@@ -1,0 +1,131 @@
+<html>
+<head>
+<script src="snap.svg.js" type="text/javascript" charset="utf-8"></script>
+</head>
+<body>
+	<svg id="drawPane"></svg>
+
+	<script type="text/javascript">
+		var s = Snap("#drawPane");
+		var g = s.g();
+
+		function Room(svgElement){
+			this.elementHolder = svgElement; //Holder for the SVG element
+			this.sensorID = -1;
+	
+			this.setColor = function(value){
+				this.elementHolder.attr({fill:value});
+			}
+
+			/* Room initialization */
+			this.setColor("#000044");
+		}
+
+		function bindAnimation(room){
+			room.animation = Snap.animate(255, 0, function(value){
+				/* Value to hey, add leading zero */
+				hexvalue = Math.floor(value).toString(16);
+				if(hexvalue.length == 1){
+					hexvalue = "0"+hexvalue;
+				}
+
+				/* Animate the value */
+				room.elementHolder.attr({fill:("#"+hexvalue+"0044")});				
+			}, 180000)
+		}
+		
+		Snap.load("space.svg", function (loadedFragment) {
+			console.log(loadedFragment.select("#g49").select("#g51").select("#g54").select("#g56"));
+			var obj1 = loadedFragment.select("#g49").select("#g51").select("#g54").select("#g56").select("#id3").select("#path59"); //Select the loung
+			obj1.attr({fill:"#ff00ff"});
+			g.append(loadedFragment);
+
+			var basePath = g.select("#g49").select("#g51").select("#g54"); //All objects are below this level
+
+			/* Hardcoded values for the room-shapes in the svg */
+			/* Do not touch unless the base svg was changed */
+			
+			var rooms = {};	//Holder for all rooms
+					
+			rooms.werkstatt = new Room(basePath.select("#g111").select("#id14").select("#path114"));
+			rooms.rz = new Room(basePath.select("#g116").select("#id15").select("#path119"));
+			rooms.medialab = new Room(basePath.select("#g106").select("#id13").select("#path109"));
+			rooms.krebslounge = new Room(basePath.select("#g101").select("#id12").select("#path104"));
+			rooms.flur = new Room(basePath.select("#g126").select("#id17").select("#path129"));
+			rooms.seminarraum = new Room(basePath.select("#g121").select("#id16").select("#path124"));
+			rooms.lounge = new Room(basePath.select("#g86").select("#id9").select("#path89"));
+			rooms.lager = new Room(basePath.select("#g91").select("#id10").select("#path94"));
+			rooms.treppenhaus = new Room(basePath.select("#g131").select("#id18").select("#path134"));
+			rooms.kueche = new Room(basePath.select("#g136").select("#id19").select("#path139"));
+			rooms.matelager = new Room(basePath.select("#g96").select("#id11").select("#path99"));
+			rooms.gangor = new Room(basePath.select("#g81").select("#id8").select("#path84"));
+			rooms.or1 = new Room(basePath.select("#g71").select("#id6").select("#path74"));
+			rooms.or2 = new Room(basePath.select("#g66").select("#id5").select("#path69"));
+			rooms.or3 = new Room(basePath.select("#g61").select("#id4").select("#path64"));
+			rooms.or4 = new Room(basePath.select("#g56").select("#id3").select("#path59"));
+			rooms.minilager = new Room(basePath.select("#g76").select("#id7").select("#path79"));
+
+			rooms.lounge.sensorID = 2037282;
+			
+			/* Calculate drift of client to server to prevent errors from wrong time on client 
+
+			var xmlHttp = new XMLHttpRequest();
+			xmlHttp.open( "GET", "http://heidi.shack:8888/api/time", false);
+			xmlHttp.send(null);
+			var clientDrift = date.getTime()/1000-xmlHttp.responseText;
+
+			*/
+
+			var date = new Date();
+
+			/* Initialize the rooms for the first time */
+			for(key in rooms){
+				if(rooms[key].sensorID != -1){ //Check that the sensor has a value assigned
+
+					bindAnimation(rooms[key])
+
+					/* Send a request for every room */					
+					var xmlHttp = new XMLHttpRequest();
+					xmlHttp.room = rooms[key]; //Save the room in the request to access the svg later
+					xmlHttp.open( "GET", "http://heidi.shack:8888/api/sensors/" + rooms[key].sensorID + "/last", true);
+					
+					xmlHttp.onreadystatechange = function() {
+						if (xmlHttp.readyState == 4) {
+							if(xmlHttp.responseText > (date.getTime()/1000-30)){ //There was movement in the last 300 seconds
+								xmlHttp.room.setColor("#ff0000");
+							}
+							console.log("Corrected client time is: " + date.getTime()/1000);
+							console.log("The sensor reported last at: " + xmlHttp.responseText);
+						}
+					};					
+					xmlHttp.send(null);
+				}
+			}
+
+			/* Subscribe to the event source for live update */
+
+			if (!!window.EventSource) {
+				var source = new EventSource('http://heidi.shack:8888/api/subscribe/live');
+
+				source.addEventListener('message', function(e) {
+					console.log("Report from sensor: " + e.data);
+					for(key in rooms){
+						if(rooms[key].sensorID == e.data){
+							rooms[key].setColor("#ff0044");
+
+							/* Rebind the animation */
+							rooms[key].animation.stop();
+							bindAnimation(rooms[key]);
+							
+						}
+					}
+				}, false);
+			}			
+		});
+
+	
+	</script>
+	
+</body>
+</html>
+
