@@ -112,11 +112,14 @@ def total_seconds(sensor,begin,end):
 
 @app.route('/api/stats/<int:sensor>/total/day')
 def total_stats(sensor):
-    print("aidsballs")
     end=datetime.now()
-    print(end)
     begin=end -timedelta(hours=24)
-    print(begin)
+    return json.dumps(total_seconds(sensor,begin,end))
+
+@app.route('/api/stats/<int:sensor>/total/everyday')
+def total_everyday_stats(sensor):
+    end=datetime.now()
+    begin=datetime.fromtimestamp(0)
     return json.dumps(total_seconds(sensor,begin,end))
     #return total_seconds(sensor,
             #datetime.now()-timedelta(hours=24),

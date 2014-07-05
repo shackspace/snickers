@@ -40,6 +40,13 @@
 
     > 750
 
+# get total seconds for the sensor
+
+    curl http://localhost/api/stats/<sensor-id>/total/everyday
+
+    > 1600
+
+
 # Subject to change
 
 ## subscribe to sensor activity in the last 10s/1m/10m
