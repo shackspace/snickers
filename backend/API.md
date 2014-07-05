@@ -34,6 +34,12 @@
 
     > 123456.12345
 
+# get the total seconds the sensor was active in the last 24 hours
+
+    curl http://localhost/api/stats/<sensor-id>/total/day
+
+    > 750
+
 # Subject to change
 
 ## subscribe to sensor activity in the last 10s/1m/10m
@@ -48,3 +54,4 @@
   curl http://localhost/api/subscribe/live
 
   > data: 1234
+

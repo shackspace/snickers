@@ -10,6 +10,8 @@ redis_host='shackles.shack'
 redis_port=6379
 redis_db=0
 sensor_namespace='sensors.motion.{}'
+timeout=timedelta(seconds=40)
+point_value=timedelta(seconds=50)
 
 r = redis.StrictRedis(host=redis_host, port=redis_port , db=redis_db)
 
@@ -24,8 +26,18 @@ def get_all_sensors():
 
 @app.route('/api/sensors/<int:sensor>/activity')
 def add_sensor_data(sensor):
-    r.publish('chat',sensor)
-    return json.dumps(int(r.rpush(sensor_namespace.format(sensor),time())))
+    nowdate= datetime.now()
+    timeout=timedelta(seconds=4)
+    try:
+        lasttime=datetime.fromtimestamp(float(r.lrange(sensor_namespace.format(sensor),-1,-1)[0]))
+    except:
+        lasttime=datetime.fromtimestamp(0)
+    if nowdate > lasttime + timeout:
+        r.publish('chat',sensor)
+        return json.dumps(int(r.rpush(sensor_namespace.format(sensor),time())))
+    else:
+        #print("ignoring activity,timeout not reached")
+        return json.dumps(False)
 @app.route('/api/time')
 def current_time():
     return json.dumps(float(time()))
@@ -82,6 +94,35 @@ def stream3():
 def livestream():
     return Response(activity_stream(),
                           mimetype="text/event-stream")
+
+def shack_open(time):
+    return True
+
+def total_seconds(sensor,begin,end):
+    q=r.lrange(sensor_namespace.format(sensor),0,-1)
+    total_time= end - begin
+    print ("balls")
+    total_points=0
+    for entry in q:
+        e = datetime.fromtimestamp(float(entry))
+        if begin < e < end and shack_open(e):
+            total_points +=1
+    return total_points * point_value.seconds
+
+
+@app.route('/api/stats/<int:sensor>/total/day')
+def total_stats(sensor):
+    print("aidsballs")
+    end=datetime.now()
+    print(end)
+    begin=end -timedelta(hours=24)
+    print(begin)
+    return json.dumps(total_seconds(sensor,begin,end))
+    #return total_seconds(sensor,
+            #datetime.now()-timedelta(hours=24),
+            #datetime.now())
+
+
 if __name__ == '__main__':
     app.debug =True
     app.run(host='0.0.0.0',port=8888,threaded=True)
