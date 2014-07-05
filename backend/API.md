@@ -43,4 +43,8 @@
   > data: [1234]
   >
   > data: [1234,4321]
+## subscribe live
 
+  curl http://localhost/api/subscribe/live
+
+  > data: 1234
