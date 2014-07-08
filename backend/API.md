@@ -39,6 +39,12 @@
     curl http://localhost/api/stats/<sensor-id>/total/day
 
     > 750
+    
+# get the total seconds the sensor was active (all time) 
+
+    curl http://localhost/api/stats/<sensor-id>/total/everytime
+
+    > 75340
 
 # get total seconds for the sensor
 
