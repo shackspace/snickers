@@ -107,7 +107,7 @@
 			}
 
 			/* Room initialization */
-			this.setColor(Snap.hsl(180, 100, 50));
+			this.setColor(Snap.hsl(180, 0, 80));
 		}
 
 		function intToColor(range, input){
@@ -165,6 +165,7 @@
 
 			/* Initialize the rooms for the first time */
 			initRooms();
+			document.getElementById("backToLive").disabled = true; //Disable to button since it is live at the beginning
 
 			/* Subscribe to the event source for live update */
 			if (!!window.EventSource) {
