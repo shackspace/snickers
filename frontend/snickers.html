@@ -3,29 +3,103 @@
 <script src="chart.js" type="text/javascript" charset="utf-8"></script>
 <script src="snap.svg.js" type="text/javascript" charset="utf-8"></script>
 </head>
-<body bgcolor="#eeeeee">
-	<svg id="spacePane" style="position:fixed; width:50%;"></svg>
-	<div style="position:fixed; top: 10px; left:50%; text-align: center ;">
-		<h1 style="font-family:sans-serif">Total room usage</h1>
-		<canvas id="chartPane" style="width: 200px; height: auto; position:relative;"></canvas>
+<body bgcolor="#444444">
+	<svg id="spacePane" style="position:fixed; top: 15px; width:45%; background-color:#444444"></svg>
+	<div style="position:fixed; top: 15px; bottom: 12%; left:50%; text-align: center; background-color:#eeeeee">
+		<h1 style="font-family:sans-serif">All time usage:</h1>
+		<canvas id="chartPane" style="width: 200px; height: auto; position:relative;"></canvas><br>
+		<input id="showAllTime" value="Show on map" type="button" onClick="showAllTime()"></input>
 	</div>
+	<div style="position:fixed; top: 92%; left:50%; width:48%; background-color:#eeeeee">
+		<span style="font-family:sans-serif">Time on map:</span>
+		<span id="displayedTime" style="font-family:sans-serif"></span>
+		<input id="backToLive" value="Back to live" type="button" onClick="backToLive()"></input>
+		<input type="range" min="0" max="1000" value="1000" style="width: 100%"/ oninput="mapTime(this.value)">
+	</div>
+	
 	
 	<script type="text/javascript">
 		var baseURL = "http://heidi.shack:8888/";
-				
+						
 		var s = Snap("#spacePane");
 		var g = s.g();
+
+		var mode = "live"; //Can be "live" to draw updates or "stop" to give other functions control of the map
 
 		/*Predefined Variables for the pie chart */
 		var sensorRooms = 0; //Rooms that are equipped with a sensor
 		var collectedRooms = 0; //Rooms that we recieved data for
 		var chartctx = document.getElementById("chartPane").getContext("2d");
 
+		var totalData = new Array(); //This is used for the pie charts values
+		var rooms = {};	//Holder for all rooms
+
+		function showAllTime(){
+			enableAllButtons();
+			document.getElementById("showAllTime").disabled = true;
+			
+			mode = "stop";
+			for(var i = 0; i<totalData.length; i++){
+				console.log("Searching for room " + totalData[i].label);
+				try{
+					rooms[totalData[i].label].animation.stop();
+				}
+				catch(e){
+					console.log("Not fatal error: " +  e);
+				}
+				rooms[totalData[i].label].setColor(Snap.hsl(intToColor(100, totalData[i].value), 100, 50));
+			}
+		}
+		function initRooms(){
+			var date = new Date(); //Get a time stamp
+			
+			for(key in rooms){
+				if(rooms[key].sensorID != -1){ //Check that the sensor has a value assigned
+
+					/* Send a request for every room */					
+					var xmlHttp = new XMLHttpRequest();
+					xmlHttp.room = rooms[key]; //Save the room in the request to access the svg later
+					xmlHttp.open( "GET", baseURL + "api/sensors/" + rooms[key].sensorID + "/last", true);
+					
+					xmlHttp.onreadystatechange = function() {
+						if (this.readyState == 4) {
+							console.log("Ready");
+							if(this.responseText > (date.getTime()/1000-180)){ //There was movement in the last 60 seconds
+								bindAnimation(this.room, date.getTime()/1000-parseInt(this.responseText)) //Calculate the current degree
+							}
+							else{
+								this.room.setColor(Snap.hsl(180,100,50));
+							}
+							console.log("Sensor " + this.room.sensorID + " reported last " + (date.getTime()/1000-parseInt(this.responseText)) + "sec. ago");
+						}
+					};					
+					xmlHttp.send(null);
+				}
+			}
+		}
+
+		function mapTime(value){
+			console.log(value);
+		}
+
+		function enableAllButtons(){
+			document.getElementById("backToLive").disabled = false;
+			document.getElementById("showAllTime").disabled = false; 
+		}
+
+		function backToLive(){
+			enableAllButtons();
+			document.getElementById("backToLive").disabled = true;
+			initRooms();
+			mode="live"; //Well. That was easy.
+		}
+		
 		function Room(name, chartColor, svgElement){
 			this.name = name;
 			this.chartColor = chartColor;
 			this.elementHolder = svgElement; //Holder for the SVG element
 			this.sensorID = -1;
+			this.animation = null;
 	
 			this.setColor = function(value){
 				console.log("Console will be: " + value);
@@ -33,24 +107,23 @@
 			}
 
 			/* Room initialization */
-			this.setColor("#000044");
+			this.setColor(Snap.hsl(180, 100, 50));
 		}
 
 		function intToColor(range, input){
 		/* This function takes a value input and converts it to a color that represents its value on 0-range */
-		/* Damn thats sounds complicated. Its like: 0/255 is blue, 128/255 is green (like 500/1000) and 288/288 is red */
-			return Math.floor(((input/range)*200)+200) //Get a degree on the color wheel
+			return Math.floor((input/range)*180); //Get a degree on the color wheel
 		}
 
 		function bindAnimation(room, current){
-			room.animation = Snap.animate(current, 0, function(value){				
+			room.animation = Snap.animate(current, 180, function(value){				
+
 				/* Animate the value */
 				var lightness = 50;
 									
-				room.elementHolder.attr({fill: Snap.hsl(intToColor(360, value),100,lightness)});				
-			}, 18000)
+				room.elementHolder.attr({fill: Snap.hsl(intToColor(180, value),100,lightness)});				
+			}, 180000)
 		}
-		
 		
 		Snap.load("space.svg", function (loadedFragment) {
 			g.append(loadedFragment);
@@ -59,8 +132,6 @@
 
 			/* Initialize the rooms */
 			/* Subject to changes if the svg or sensor positions change */
-
-			var rooms = {};	//Holder for all rooms
 					
 			rooms.werkstatt = new Room("Werkstatt", "#00ff00", basePath.select("#g111").select("#id14").select("#path114"));
 			rooms.rz = new Room("RZ", "#00ff00", basePath.select("#g116").select("#id15").select("#path119"));
@@ -92,50 +163,29 @@
 
 			*/
 
-			var date = new Date();
-
 			/* Initialize the rooms for the first time */
-			for(key in rooms){
-				if(rooms[key].sensorID != -1){ //Check that the sensor has a value assigned
-
-					/* Send a request for every room */					
-					var xmlHttp = new XMLHttpRequest();
-					xmlHttp.room = rooms[key]; //Save the room in the request to access the svg later
-					xmlHttp.open( "GET", baseURL + "api/sensors/" + rooms[key].sensorID + "/last", true);
-					
-					xmlHttp.onreadystatechange = function() {
-						if (this.readyState == 4) {
-							console.log("Ready");
-							if(this.responseText > (date.getTime()/1000-60)){ //There was movement in the last 60 seconds
-								this.room.setColor(Snap.hsl(0,100,50));
-								bindAnimation(this.room, 360-360/180*(date.getTime()/1000-parseInt(this.responseText)))
-							}
-							console.log("Sensor " + this.room.sensorID + " reported last " + (date.getTime()/1000-parseInt(this.responseText)) + "sec. ago");
-						}
-					};					
-					xmlHttp.send(null);
-				}
-			}
+			initRooms();
 
 			/* Subscribe to the event source for live update */
-
 			if (!!window.EventSource) {
 				var source = new EventSource(baseURL + "api/subscribe/live");
 				source.addEventListener('message', function(e) {
 					console.log("Report from sensor: " + e.data);
-					for(key in rooms){
-						if(rooms[key].sensorID == e.data){
-							rooms[key].setColor("#ff0044");
+					if(mode == "live"){ //Make sure that updates are wanted
+						for(key in rooms){
+							if(rooms[key].sensorID == e.data){
+								rooms[key].setColor("#ff0044");
 
-							/* Rebind the animation */
-							try{
-								rooms[key].animation.stop();
+								/* Rebind the animation */
+								try{
+									rooms[key].animation.stop();
+								}
+								catch(e){
+									console.log("Not fatal error: " +  e);
+								}
+								bindAnimation(rooms[key], 0);
+			
 							}
-							catch(e){
-								console.log("Not fatal error" +  e);
-							}
-							bindAnimation(rooms[key], 255);
-							
 						}
 					}
 				}, false);
@@ -149,11 +199,10 @@
 			
 			xmlHttp.onreadystatechange = function() {
 				if (this.readyState == 4) {
-					var totalData = new Array();
 					var serverResponse = JSON.parse(this.responseText);
 					for(key in serverResponse){
 						console.log(key);
-						totalData.push({
+						totalData.push({ //Just use the totalData defined in the script header
 							value: parseInt(serverResponse[key].percent),
 							color: rooms[serverResponse[key].name].chartColor, //Solve for the color by searching for the name. Sry for this data structure :/
 							highlight: "#FF5A5E",
@@ -164,12 +213,12 @@
 					console.log("Drawing Pie chart");
 					
 					new Chart(chartctx).Doughnut(totalData);
-					return totalData;
 				}
 			};					
 			xmlHttp.send(null);
 		});
-			
+
+					
 	</script>
 	
 </body>
