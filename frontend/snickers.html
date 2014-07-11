@@ -28,6 +28,7 @@
 			this.sensorID = -1;
 	
 			this.setColor = function(value){
+				console.log("Console will be: " + value);
 				this.elementHolder.attr({fill:value});
 			}
 
@@ -35,17 +36,19 @@
 			this.setColor("#000044");
 		}
 
-		function bindAnimation(room, current){
-			room.animation = Snap.animate(current, 0, function(value){
-				/* Value to hey, add leading zero */
-				hexvalue = Math.floor(value).toString(16);
-				if(hexvalue.length == 1){
-					hexvalue = "0"+hexvalue;
-				}
+		function intToColor(range, input){
+		/* This function takes a value input and converts it to a color that represents its value on 0-range */
+		/* Damn thats sounds complicated. Its like: 0/255 is blue, 128/255 is green (like 500/1000) and 288/288 is red */
+			return Math.floor(((input/range)*200)+200) //Get a degree on the color wheel
+		}
 
+		function bindAnimation(room, current){
+			room.animation = Snap.animate(current, 0, function(value){				
 				/* Animate the value */
-				room.elementHolder.attr({fill:("#"+hexvalue+"0044")});				
-			}, 180000)
+				var lightness = 50;
+									
+				room.elementHolder.attr({fill: Snap.hsl(intToColor(360, value),100,lightness)});				
+			}, 18000)
 		}
 		
 		
@@ -104,8 +107,8 @@
 						if (this.readyState == 4) {
 							console.log("Ready");
 							if(this.responseText > (date.getTime()/1000-60)){ //There was movement in the last 60 seconds
-								this.room.setColor("#ff0044");
-								bindAnimation(this.room, 255-255/180*(date.getTime()/1000-parseInt(this.responseText)))
+								this.room.setColor(Snap.hsl(0,100,50));
+								bindAnimation(this.room, 360-360/180*(date.getTime()/1000-parseInt(this.responseText)))
 							}
 							console.log("Sensor " + this.room.sensorID + " reported last " + (date.getTime()/1000-parseInt(this.responseText)) + "sec. ago");
 						}
