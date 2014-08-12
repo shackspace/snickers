@@ -6,7 +6,7 @@ from datetime import datetime,timedelta
 import json
 app = Flask(__name__)
 import redis
-redis_host='shackles.shack'
+redis_host='glados.shack'
 redis_port=6379
 redis_db=0
 sensor_namespace='sensors.motion.{}'
@@ -14,6 +14,7 @@ sensor_namespace='sensors.motion.{}'
 rooms_namespace='sensors.rooms.{}'
 timeout=timedelta(seconds=40)
 point_value=timedelta(seconds=50)
+temperature_url='http://heidi:8080/render/?target=sensors.temp.rooms.lounge.temp&format=json'
 
 r = redis.StrictRedis(host=redis_host, port=redis_port , db=redis_db)
 
@@ -40,6 +41,7 @@ def add_sensor_data(sensor):
     else:
         #print("ignoring activity,timeout not reached")
         return json.dumps(False)
+
 @app.route('/api/time')
 def current_time():
     return json.dumps(float(time()))
@@ -160,7 +162,19 @@ def total():
         ret[ident]['percent'] = float(ret[ident]['seconds'] /total_secs) * 100
     return json.dumps(ret)
     #return json.dumps({ "2037282": {"name":"lounge","seconds": 1234, "percent":81.3},"9846210": {"name":"kueche","seconds": 100, "percent":18.7} })
+@app.route('/api/temperature')
+def get_temperature():
+    import requests,json
+    try:
+    r = requests.get(temperature_url)
+    c = json.loads(r.content.decode())
+        dp = c[0]['datapoints']
+        for temperature,ts in reversed(dp):
+            if temperature: 
+                return json.dumps([temperature,ts])
+    return json.dumps(['no data',0])
 
+    return json.dumps([None,None])
 if __name__ == '__main__':
     app.debug =True
     app.run(host='0.0.0.0',port=8888,threaded=True)
