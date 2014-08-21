@@ -5,7 +5,7 @@
 </head>
 <body bgcolor="#444444">
 	<svg id="spacePane" style="position:fixed; top: 15px; width:45%; background-color:#444444"></svg>
-	<div style="position:fixed; top: 15px; bottom: 12%; width: 20%; left:50%; text-align: center; background-color:#eeeeee">
+	<div style="position:fixed; top: 15px; bottom: 12%; left:50%; text-align: center; background-color:#eeeeee">
 		<h1 style="font-family:sans-serif">All time usage:</h1>
 		<canvas id="chartPane" style="width: 200px; height: auto; position:relative;"></canvas><br><br>
 		<input id="showAllTime" value="Show on map" type="button" onClick="showAllTime()"></input><br>		
@@ -19,6 +19,8 @@
 	
 	
 	<script type="text/javascript">
+		/* Small is beautiful - this program is not small */
+		
 		var baseURL = "http://heidi.shack:8888/";
 						
 		var s = Snap("#spacePane");
@@ -35,20 +37,18 @@
 		var rooms = {};	//Holder for all rooms
 
 		function showAllTime(){
+			console.log("Not implemented");
+			/* Disabled due to API Limitations
 			enableAllButtons();
 			document.getElementById("showAllTime").disabled = true;
 			
 			mode = "stop";
 			for(var i = 0; i<totalData.length; i++){
 				console.log("Searching for room " + totalData[i].label);
-				try{
-					rooms[totalData[i].label].animation.stop();
-				}
-				catch(e){
-					console.log("Not fatal error: " +  e);
-				}
+				//TODO We need to stop the timer here somehow
 				rooms[totalData[i].label].setColor(Snap.hsl(intToColor(100, totalData[i].value), 100, 50));
 			}
+			*/
 		}
 		function initRooms(){
 			var date = new Date(); //Get a time stamp
@@ -63,13 +63,9 @@
 					
 					xmlHttp.onreadystatechange = function() {
 						if (this.readyState == 4) {
-							console.log("Ready");
-							if(this.responseText > (date.getTime()/1000-180)){ //There was movement in the last 60 seconds
-								bindAnimation(this.room, date.getTime()/1000-parseInt(this.responseText)) //Calculate the current degree
-							}
-							else{
-								this.room.setColor(Snap.hsl(180,100,50));
-							}
+							this.room.touchedLast = parseInt(this.responseText);
+							this.room.recalculateColor(); //Let the room get its color
+							console.log("Recieved that sensor " + this.room.sensorID + " reported last " + this.responseText);
 							console.log("Sensor " + this.room.sensorID + " reported last " + (date.getTime()/1000-parseInt(this.responseText)) + "sec. ago");
 						}
 					};					
@@ -93,17 +89,31 @@
 			initRooms();
 			mode="live"; //Well. That was easy.
 		}
+
+		function updateRoomColors(){
+			for(key in rooms){
+				rooms[key].touchedLast = rooms[key].touchedLast +1; //Increment the last touch
+				rooms[key].recalculateColor();
+				//console.log("Updated " + rooms[key].name + " with last touch " + rooms[key].touchedLast);
+			}
+		}
 		
 		function Room(name, chartColor, svgElement){
 			this.name = name;
 			this.chartColor = chartColor;
 			this.elementHolder = svgElement; //Holder for the SVG element
 			this.sensorID = -1;
-			this.animation = null;
+			this.touchedLast = 181; //Init all blue
 	
 			this.setColor = function(value){
-				console.log("Console will be: " + value);
 				this.elementHolder.attr({fill:value});
+			}
+
+			this.recalculateColor = function(){
+				//Color goes from 0 to 180 in 3 Minutes
+				if(this.touchedLast<=181){
+					this.setColor(Snap.hsl(intToColor(180, this.touchedLast),100, 50));
+				}
 			}
 
 			/* Room initialization */
@@ -113,16 +123,6 @@
 		function intToColor(range, input){
 		/* This function takes a value input and converts it to a color that represents its value on 0-range */
 			return Math.floor((input/range)*180); //Get a degree on the color wheel
-		}
-
-		function bindAnimation(room, current){
-			room.animation = Snap.animate(current, 180, function(value){				
-
-				/* Animate the value */
-				var lightness = 50;
-									
-				room.elementHolder.attr({fill: Snap.hsl(intToColor(180, value),100,lightness)});				
-			}, 180000)
 		}
 		
 		Snap.load("space.svg", function (loadedFragment) {
@@ -151,8 +151,17 @@
 			rooms.or4 = new Room("OR4", "#00ff00",basePath.select("#g56").select("#id3").select("#path59"));
 			rooms.minilager = new Room("Minilager", "#00ff00",basePath.select("#g76").select("#id7").select("#path79"));
 
-			rooms.lounge.sensorID = 2037282;
-			rooms.kueche.sensorID = 9846210;
+			rooms.werkstatt.sensorID = 7151202;
+			rooms.rz.sensorID = 9846210;
+			rooms.medialab.sensorID = 817506;
+			rooms.krebslounge.sensorID = 5798242;
+			rooms.seminarraum.sensorID = 11253282;
+			rooms.lounge.sensorID = 2956898;
+			rooms.kueche.sensorID = 3701090;
+			rooms.or1.sensorID = 9018978;
+			rooms.or2.sensorID = 2037282;
+			rooms.or3.sensorID = 12492386;
+			rooms.or4.sensorID = 16353218;
 			
 			/* Calculate drift of client to server to prevent errors from wrong time on client 
 
@@ -165,6 +174,7 @@
 
 			/* Initialize the rooms for the first time */
 			initRooms();
+			setInterval(updateRoomColors, 1000); //Bind the fading animation
 			document.getElementById("backToLive").disabled = true; //Disable to button since it is live at the beginning
 
 			/* Subscribe to the event source for live update */
@@ -175,17 +185,8 @@
 					if(mode == "live"){ //Make sure that updates are wanted
 						for(key in rooms){
 							if(rooms[key].sensorID == e.data){
-								rooms[key].setColor("#ff0044");
-
-								/* Rebind the animation */
-								try{
-									rooms[key].animation.stop();
-								}
-								catch(e){
-									console.log("Not fatal error: " +  e);
-								}
-								bindAnimation(rooms[key], 0);
-			
+								rooms[key].touchedLast = 0;
+								rooms[key].setColor("#ff0044");		
 							}
 						}
 					}
@@ -202,10 +203,9 @@
 				if (this.readyState == 4) {
 					var serverResponse = JSON.parse(this.responseText);
 					for(key in serverResponse){
-						console.log(key);
 						totalData.push({ //Just use the totalData defined in the script header
 							value: parseInt(serverResponse[key].percent),
-							color: rooms[serverResponse[key].name].chartColor, //Solve for the color by searching for the name. Sry for this data structure :/
+							color: "#FF0099", //TODO Fuck it, will do that later
 							highlight: "#FF5A5E",
 							label: serverResponse[key].name
 						});
@@ -217,8 +217,9 @@
 				}
 			};					
 			xmlHttp.send(null);
+			
 		});
-
+		
 					
 	</script>
 	
