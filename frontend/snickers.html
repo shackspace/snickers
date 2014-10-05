@@ -59,11 +59,12 @@
 					/* Send a request for every room */					
 					var xmlHttp = new XMLHttpRequest();
 					xmlHttp.room = rooms[key]; //Save the room in the request to access the svg later
-					xmlHttp.open( "GET", baseURL + "api/sensors/" + rooms[key].sensorID + "/last", true);
+          //xmlHttp.open( "GET", baseURL + "/api/sensors/" + rooms[key].sensorID + "/last", true);
+          xmlHttp.open( "GET", "/api/sensors/" + rooms[key].sensorID + "/last", true);
 					
 					xmlHttp.onreadystatechange = function() {
 						if (this.readyState == 4) {
-							this.room.touchedLast = parseInt(this.responseText);
+              this.room.touchedLast = date.getTime()/1000-parseInt(this.responseText);
 							this.room.recalculateColor(); //Let the room get its color
 							console.log("Recieved that sensor " + this.room.sensorID + " reported last " + this.responseText);
 							console.log("Sensor " + this.room.sensorID + " reported last " + (date.getTime()/1000-parseInt(this.responseText)) + "sec. ago");
@@ -112,11 +113,13 @@
 			this.recalculateColor = function(){
 				//Color goes from 0 to 180 in 3 Minutes
 				if(this.touchedLast<=181){
-					this.setColor(Snap.hsl(intToColor(180, this.touchedLast),100, 50));
+          console.log(this.touchedLast);
+          this.setColor(Snap.hsl(intToColor(180, this.touchedLast),100, 50));
 				}
 			}
 
 			/* Room initialization */
+			//this.setColor(Snap.hsl(180, 0, 80));
 			this.setColor(Snap.hsl(180, 0, 80));
 		}
 
@@ -125,6 +128,7 @@
 			return Math.floor((input/range)*180); //Get a degree on the color wheel
 		}
 		
+		//Snap.load("space.svg", function (loadedFragment) {
 		Snap.load("/static/space.svg", function (loadedFragment) {
 			g.append(loadedFragment);
 
@@ -179,7 +183,8 @@
 
 			/* Subscribe to the event source for live update */
 			if (!!window.EventSource) {
-				var source = new EventSource(baseURL + "api/subscribe/live");
+        //var source = new EventSource(baseURL + "api/subscribe/live");
+				var source = new EventSource("/api/subscribe/live");
 				source.addEventListener('message', function(e) {
 					console.log("Report from sensor: " + e.data);
 					if(mode == "live"){ //Make sure that updates are wanted
@@ -197,7 +202,8 @@
 									
 			var xmlHttp = new XMLHttpRequest();
 			
-			xmlHttp.open( "GET", baseURL + "api/stats", true); //TODO: Change this to everytime
+      //xmlHttp.open( "GET", baseURL + "api/stats", true); //TODO: Change this to everytime
+      xmlHttp.open( "GET", "/api/stats", true); //TODO: Change this to everytime
 			
 			xmlHttp.onreadystatechange = function() {
 				if (this.readyState == 4) {
