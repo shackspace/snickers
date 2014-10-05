@@ -1,7 +1,7 @@
 <html>
 <head>
-<script src="chart.js" type="text/javascript" charset="utf-8"></script>
-<script src="snap.svg.js" type="text/javascript" charset="utf-8"></script>
+<script src="/static/chart.js" type="text/javascript" charset="utf-8"></script>
+<script src="/static/snap.svg.js" type="text/javascript" charset="utf-8"></script>
 </head>
 <body bgcolor="#444444">
 	<svg id="spacePane" style="position:fixed; top: 15px; width:45%; height:100%; background-color:#444444"></svg>
@@ -125,7 +125,7 @@
 			return Math.floor((input/range)*180); //Get a degree on the color wheel
 		}
 		
-		Snap.load("space.svg", function (loadedFragment) {
+		Snap.load("/static/space.svg", function (loadedFragment) {
 			g.append(loadedFragment);
 
 			var basePath = g.select("#g49").select("#g51").select("#g54"); //All objects are below this level
