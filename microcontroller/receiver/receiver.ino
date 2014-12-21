@@ -19,7 +19,20 @@ void setup() {
 
 void loop() {
   if (mySwitch.available()) {
-    output(mySwitch.getReceivedValue(), mySwitch.getReceivedBitlength(), mySwitch.getReceivedDelay(), mySwitch.getReceivedRawdata(),mySwitch.getReceivedProtocol());
-    mySwitch.resetAvailable();
+     int value = mySwitch.getReceivedValue();
+    
+    if (value == 0) {
+      Serial.print("Unknown encoding");
+    } else {
+      Serial.print("Received ");
+      Serial.print( mySwitch.getReceivedValue() );
+      Serial.print(" / ");
+      Serial.print( mySwitch.getReceivedBitlength() );
+      Serial.print("bit ");
+      Serial.print("Protocol: ");
+      Serial.println( mySwitch.getReceivedProtocol() );
+    }1
+    mySwitch.resetAvailable();    
+
   }
 }
