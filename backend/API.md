@@ -33,24 +33,20 @@
     curl http://localhost/api/time
 
     > 123456.12345
-
-# get the total seconds the sensor was active in the last 24 hours
-
-    curl http://localhost/api/stats/<sensor-id>/total/day
-
-    > 750
     
-# get the total seconds the sensor was active (all time) 
+# Statistical Data
 
-    curl http://localhost/api/stats/<sensor-id>/total/everytime
-
-    > 75340
-
-# get total seconds for the sensor
+## Get total active seconds for the sensor
 
     curl http://localhost/api/stats/<sensor-id>/total
 
     > 1600
+    
+## Get the total seconds the sensor was active in the last 24 hours
+
+    curl http://localhost/api/stats/<sensor-id>/total/day
+
+    > 750
 
 # subscribe live
 
