@@ -66,7 +66,20 @@
   curl http://localhost/api/stats
 
   > {"2037282": {"seconds": 79300, "name": "lounge", "percent": 51.93189259986902}, "9846210": {"seconds": 73400, "name": "kueche", "percent": 48.06810740013098}
+
+# Environment API
+## Temperature in C°
+
+    curl http://localhost/api/env/temperature
     
+    > 23.9
+    
+## Humidity in %
+
+    curl http://localhost/api/env/humidity
+    
+    > 55
+
 # Misc information
 
 ## Get the server time
