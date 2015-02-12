@@ -35,6 +35,12 @@
     # return all timestamps
     > [123456.12345,123432.12345]
 
+## Subscribe to live events (Eventsource)
+
+  curl http://localhost/api/subscribe/live
+
+  > data: 1234
+
 ## Post new activity
 
     curl http://localhost/api/sensors/<id>/activity
@@ -68,12 +74,6 @@
     curl http://localhost/api/time
 
     > 123456.12345
-
-# subscribe live
-
-  curl http://localhost/api/subscribe/live
-
-  > data: 1234
 
 # Subject to change
 
