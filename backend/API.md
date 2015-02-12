@@ -72,13 +72,13 @@
 
     curl http://localhost/api/env/temperature
     
-    > 23.9
+    > [21.9, 1423757160]
     
 ## Humidity in %
 
     curl http://localhost/api/env/humidity
     
-    > 55
+    > [55, 1423757160]
 
 # Misc information
 
