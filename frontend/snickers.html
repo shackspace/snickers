@@ -5,107 +5,38 @@
 </head>
 <body bgcolor="#444444">
 	<svg id="spacePane" style="position:fixed; top: 15px; width:45%; height:100%; background-color:#444444"></svg>
-	<div style="position:fixed; top: 15px; bottom: 12%; left:50%; text-align: center; background-color:#eeeeee">
-		<h1 style="font-family:sans-serif">All time usage:</h1>
-		<canvas id="chartPane" style="width: 200px; height: auto; position:relative;"></canvas><br><br>
-		<input id="showAllTime" value="Show on map" type="button" onClick="showAllTime()"></input><br>		
-	</div>
-	<div style="position:fixed; top: 90%; left:50%; width:48%; background-color:#eeeeee; padding:5px">
-		<span style="font-family:sans-serif">Time on map:</span>
-		<span id="displayedTime" style="font-family:sans-serif"></span>
-		<input id="backToLive" value="Back to live" type="button" onClick="backToLive()"></input>
-		<input type="range" min="0" max="1000" value="1000" style="width: 100%"/ oninput="mapTime(this.value)">
-	</div>
-	
-	
+
 	<script type="text/javascript">
 		/* Small is beautiful - this program is not small */
-		
-		var baseURL = "http://heidi.shack:8888/";
-						
+
+		/* Helper Functions */
+
+		function intToColor(range, input){
+			// This function takes a value input and converts it to a color that represents its value on 0-range */
+			return Math.floor((input/range)*180); //Get a degree on the color wheel
+		}
+
+		/* Acutal code */		
+
+		var baseURL = "http://heidi.shack:8888";
+
 		var s = Snap("#spacePane");
 		var g = s.g();
-
-		var mode = "live"; //Can be "live" to draw updates or "stop" to give other functions control of the map
 
 		/*Predefined Variables for the pie chart */
 		var sensorRooms = 0; //Rooms that are equipped with a sensor
 		var collectedRooms = 0; //Rooms that we recieved data for
-		var chartctx = document.getElementById("chartPane").getContext("2d");
 
 		var totalData = new Array(); //This is used for the pie charts values
-		var rooms = {};	//Holder for all rooms
+		var rooms = {}; //Holder for all rooms
 
-		function showAllTime(){
-			console.log("Not implemented");
-			/* Disabled due to API Limitations
-			enableAllButtons();
-			document.getElementById("showAllTime").disabled = true;
-			
-			mode = "stop";
-			for(var i = 0; i<totalData.length; i++){
-				console.log("Searching for room " + totalData[i].label);
-				//TODO We need to stop the timer here somehow
-				rooms[totalData[i].label].setColor(Snap.hsl(intToColor(100, totalData[i].value), 100, 50));
-			}
-			*/
-		}
-		function initRooms(){
-			var date = new Date(); //Get a time stamp
-			
-			for(key in rooms){
-				if(rooms[key].sensorID != -1){ //Check that the sensor has a value assigned
 
-					/* Send a request for every room */					
-					var xmlHttp = new XMLHttpRequest();
-					xmlHttp.room = rooms[key]; //Save the room in the request to access the svg later
-          //xmlHttp.open( "GET", baseURL + "/api/sensors/" + rooms[key].sensorID + "/last", true);
-          xmlHttp.open( "GET", "/api/sensors/" + rooms[key].sensorID + "/last", true);
-					
-					xmlHttp.onreadystatechange = function() {
-						if (this.readyState == 4) {
-              this.room.touchedLast = date.getTime()/1000-parseInt(this.responseText);
-							this.room.recalculateColor(); //Let the room get its color
-							console.log("Recieved that sensor " + this.room.sensorID + " reported last " + this.responseText);
-							console.log("Sensor " + this.room.sensorID + " reported last " + (date.getTime()/1000-parseInt(this.responseText)) + "sec. ago");
-						}
-					};					
-					xmlHttp.send(null);
-				}
-			}
-		}
-
-		function mapTime(value){
-			console.log(value);
-		}
-
-		function enableAllButtons(){
-			document.getElementById("backToLive").disabled = false;
-			document.getElementById("showAllTime").disabled = false; 
-		}
-
-		function backToLive(){
-			enableAllButtons();
-			document.getElementById("backToLive").disabled = true;
-			initRooms();
-			mode="live"; //Well. That was easy.
-		}
-
-		function updateRoomColors(){
-			for(key in rooms){
-				rooms[key].touchedLast = rooms[key].touchedLast +1; //Increment the last touch
-				rooms[key].recalculateColor();
-				//console.log("Updated " + rooms[key].name + " with last touch " + rooms[key].touchedLast);
-			}
-		}
-		
-		function Room(name, chartColor, svgElement){
+		function Room(name, svgElement){
 			this.name = name;
-			this.chartColor = chartColor;
 			this.elementHolder = svgElement; //Holder for the SVG element
 			this.sensorID = -1;
 			this.touchedLast = 181; //Init all blue
-	
+
 			this.setColor = function(value){
 				this.elementHolder.attr({fill:value});
 			}
@@ -113,22 +44,46 @@
 			this.recalculateColor = function(){
 				//Color goes from 0 to 180 in 3 Minutes
 				if(this.touchedLast<=181){
-          console.log(this.touchedLast);
-          this.setColor(Snap.hsl(intToColor(180, this.touchedLast),100, 50));
+					console.log(this.touchedLast);
+					this.setColor(Snap.hsl(intToColor(180, this.touchedLast),100, 50));
 				}
 			}
 
 			/* Room initialization */
-			//this.setColor(Snap.hsl(180, 0, 80));
 			this.setColor(Snap.hsl(180, 0, 80));
 		}
-
-		function intToColor(range, input){
-		/* This function takes a value input and converts it to a color that represents its value on 0-range */
-			return Math.floor((input/range)*180); //Get a degree on the color wheel
-		}
 		
-		//Snap.load("space.svg", function (loadedFragment) {
+		function initRooms(){
+			var date = new Date(); //Get a time stamp
+
+			for(key in rooms){
+				if(rooms[key].sensorID != -1){ //Check that the sensor has a value assigned
+
+					/* Send a request for every room */
+					var xmlHttp = new XMLHttpRequest();
+					xmlHttp.room = rooms[key]; //Save the room in the request to access the svg later
+					xmlHttp.open( "GET", baseURL + "/api/sensors/" + rooms[key].sensorID + "/last", true);
+
+					xmlHttp.onreadystatechange = function() {
+						if (this.readyState == 4) {
+							this.room.touchedLast = date.getTime()/1000-parseInt(this.responseText);
+							this.room.recalculateColor(); //Let the room get its color
+							console.log("Recieved that sensor " + this.room.sensorID + " reported last " + this.responseText);
+							console.log("Sensor " + this.room.sensorID + " reported last " + (date.getTime()/1000-parseInt(this.responseText)) + "sec. ago");
+						}
+					};
+					xmlHttp.send(null);
+				}
+			}
+		}
+
+		function updateRoomColors(){
+			for(key in rooms){
+				rooms[key].touchedLast = rooms[key].touchedLast +1; //Increment the last touch
+				rooms[key].recalculateColor();
+			}
+		}
+
 		Snap.load("/static/space.svg", function (loadedFragment) {
 			g.append(loadedFragment);
 
@@ -136,24 +91,24 @@
 
 			/* Initialize the rooms */
 			/* Subject to changes if the svg or sensor positions change */
-					
-			rooms.werkstatt = new Room("Werkstatt", "#00ff00", basePath.select("#g111").select("#id14").select("#path114"));
-			rooms.rz = new Room("RZ", "#00ff00", basePath.select("#g116").select("#id15").select("#path119"));
-			rooms.medialab = new Room("MediaLab", "#00ff00",basePath.select("#g106").select("#id13").select("#path109"));
-			rooms.krebslounge = new Room("Krebslounge", "#00ff00",basePath.select("#g101").select("#id12").select("#path104"));
-			rooms.flur = new Room("Flur", "#00ff00",basePath.select("#g126").select("#id17").select("#path129"));
-			rooms.seminarraum = new Room("Seminar", "#00ff00",basePath.select("#g121").select("#id16").select("#path124"));
-			rooms.lounge = new Room("Lounge", "#99ff00", basePath.select("#g86").select("#id9").select("#path89"));
-			rooms.lager = new Room("Lager", "#00ff00",basePath.select("#g91").select("#id10").select("#path94"));
-			rooms.treppenhaus = new Room("Treppenhaus", "#00ff00",basePath.select("#g131").select("#id18").select("#path134"));
-			rooms.kueche = new Room("Kueche", "#ff0000", basePath.select("#g136").select("#id19").select("#path139"));
-			rooms.matelager = new Room("MateLager", "#00ff00",basePath.select("#g96").select("#id11").select("#path99"));
-			rooms.gangor = new Room("GangOR", "#00ff00",basePath.select("#g81").select("#id8").select("#path84"));
-			rooms.or1 = new Room("OR1", "#00ff00",basePath.select("#g71").select("#id6").select("#path74"));
-			rooms.or2 = new Room("OR2", "#00ff00",basePath.select("#g66").select("#id5").select("#path69"));
-			rooms.or3 = new Room("OR3", "#00ff00",basePath.select("#g61").select("#id4").select("#path64"));
-			rooms.or4 = new Room("OR4", "#00ff00",basePath.select("#g56").select("#id3").select("#path59"));
-			rooms.minilager = new Room("Minilager", "#00ff00",basePath.select("#g76").select("#id7").select("#path79"));
+
+			rooms.werkstatt = new Room("Werkstatt", basePath.select("#g111").select("#id14").select("#path114"));
+			rooms.rz = new Room("RZ", basePath.select("#g116").select("#id15").select("#path119"));
+			rooms.medialab = new Room("MediaLab",basePath.select("#g106").select("#id13").select("#path109"));
+			rooms.krebslounge = new Room("Krebslounge", basePath.select("#g101").select("#id12").select("#path104"));
+			rooms.flur = new Room("Flur", basePath.select("#g126").select("#id17").select("#path129"));
+			rooms.seminarraum = new Room("Seminar", basePath.select("#g121").select("#id16").select("#path124"));
+			rooms.lounge = new Room("Lounge", basePath.select("#g86").select("#id9").select("#path89"));
+			rooms.lager = new Room("Lager", basePath.select("#g91").select("#id10").select("#path94"));
+			rooms.treppenhaus = new Room("Treppenhaus", basePath.select("#g131").select("#id18").select("#path134"));
+			rooms.kueche = new Room("Kueche", basePath.select("#g136").select("#id19").select("#path139"));
+			rooms.matelager = new Room("MateLager", basePath.select("#g96").select("#id11").select("#path99"));
+			rooms.gangor = new Room("GangOR", basePath.select("#g81").select("#id8").select("#path84"));
+			rooms.or1 = new Room("OR1", basePath.select("#g71").select("#id6").select("#path74"));
+			rooms.or2 = new Room("OR2", basePath.select("#g66").select("#id5").select("#path69"));
+			rooms.or3 = new Room("OR3", basePath.select("#g61").select("#id4").select("#path64"));
+			rooms.or4 = new Room("OR4", basePath.select("#g56").select("#id3").select("#path59"));
+			rooms.minilager = new Room("Minilager", basePath.select("#g76").select("#id7").select("#path79"));
 
 			rooms.werkstatt.sensorID = 7151202;
 			rooms.rz.sensorID = 9846210;
@@ -166,32 +121,21 @@
 			rooms.or2.sensorID = 2037282;
 			rooms.or3.sensorID = 12492386;
 			rooms.or4.sensorID = 16353218;
-			
-			/* Calculate drift of client to server to prevent errors from wrong time on client 
-
-			var xmlHttp = new XMLHttpRequest();
-			xmlHttp.open( "GET", "http://heidi.shack:8888/api/time", false);
-			xmlHttp.send(null);
-			var clientDrift = date.getTime()/1000-xmlHttp.responseText;
-
-			*/
 
 			/* Initialize the rooms for the first time */
 			initRooms();
 			setInterval(updateRoomColors, 1000); //Bind the fading animation
-			document.getElementById("backToLive").disabled = true; //Disable to button since it is live at the beginning
-
+			
 			/* Subscribe to the event source for live update */
 			if (!!window.EventSource) {
-        //var source = new EventSource(baseURL + "api/subscribe/live");
-				var source = new EventSource("/api/subscribe/live");
+				var source = new EventSource(baseURL + "/api/subscribe/live");
 				source.addEventListener('message', function(e) {
 					console.log("Report from sensor: " + e.data);
 					if(mode == "live"){ //Make sure that updates are wanted
 						for(key in rooms){
 							if(rooms[key].sensorID == e.data){
 								rooms[key].touchedLast = 0;
-								rooms[key].setColor("#ff0044");		
+								rooms[key].setColor("#ff0044");
 							}
 						}
 					}
@@ -199,12 +143,10 @@
 			}
 
 			/* Collect statistical data from the sensors */
-									
+
+			/*
 			var xmlHttp = new XMLHttpRequest();
-			
-      //xmlHttp.open( "GET", baseURL + "api/stats", true); //TODO: Change this to everytime
-      xmlHttp.open( "GET", "/api/stats", true); //TODO: Change this to everytime
-			
+			xmlHttp.open( "GET", "/api/stats", true); //TODO: Change this to everytime
 			xmlHttp.onreadystatechange = function() {
 				if (this.readyState == 4) {
 					var serverResponse = JSON.parse(this.responseText);
@@ -215,20 +157,20 @@
 							highlight: "#FF5A5E",
 							label: serverResponse[key].name
 						});
-					}					
+					}
 					console.log("Got statistical room data");
 					console.log("Drawing Pie chart");
-					
+
 					new Chart(chartctx).Doughnut(totalData);
 				}
-			};					
+			};
 			xmlHttp.send(null);
-			
+			*/
 		});
-		
-					
+
+
 	</script>
-	
+
 </body>
 </html>
 
