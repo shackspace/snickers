@@ -15,15 +15,25 @@ sensor_namespace='sensors.motion.id.{}'
 rooms_namespace='sensors.rooms.{}'
 temperature_target='sensors.temp.rooms.lounge.temp'
 timeout=timedelta(seconds=40)
-point_value=timedelta(seconds=60)
+point_value=60
 graphite_host="http://heidi:8080"
+CARBON_HOST="localhost"
+CARBON_PORT=2003
 simple_sensor_mapping = {
-        "lounge":9846210,
-        "kueche":9584064
+			"werkstatt":"7151202",
+			"rz":"9846210",
+			"medialab":"817506",
+			"krebslounge":"5798242",
+			"seminarraum":"11253282",
+			"lounge":"2956898",
+			"kueche":"3701090",
+			"or1":"9018978",
+			"or2":"2037282",
+			"or3":"12492386",
+			"or4":"16353218"
         }
 import logging as log
 log.basicConfig(level=log.DEBUG)
-log.debug("balls")
 r = redis.StrictRedis(host=redis_host, port=redis_port , db=redis_db)
 
 def data_from_graphite(target,addn_params=None):
@@ -38,44 +48,85 @@ def data_from_graphite(target,addn_params=None):
     url='{0}/render/?{1}'.format(graphite_host,urlencode(params))
     log.debug("url:"+url)
     #return requests.get(url).json()
-    return requests.get(url).json()
+    return requests.get(url,timeout=5).json()
 
 @app.route('/')
+#@crossdomain(origin='*')
 def hello_world():
-    return 'try:<br/>/api/sensors<br/>'
+    return open('static/snickers.html').read()
 
 @app.route('/api/sensors')
 def get_all_sensors():
     url="{0}/metrics/find/?query={1}&format=treejson".format(graphite_host,sensor_namespace).format('*')
 
     return json.dumps([ int(e['id'].split(".")[-1]) \
-            for e in requests.get(url).json() ])
+            for e in requests.get(url,timeout=5).json() ])
+
+def sensor_to_graphite(sensor):
+    import socket
+    data =""
+    now=datetime.now()
+    sock = socket.socket()
+    offset=int(point_value/2)
+    log.debug("beginning to build sensor data")
+    # create array for each second the sensor is 'alive'
+    for i in range(point_value):
+        ts=(now+timedelta(seconds=i-offset)).timestamp()
+        data+="sensors.motion.id.%d 1 %d\n"%(sensor,ts)
+    sock.connect((CARBON_HOST, CARBON_PORT))
+    #log.debug(data)
+    sock.sendall(data.encode())
+    sock.close()
+    return
+
 
 @app.route('/api/sensors/<int:sensor>/activity')
 def add_sensor_data(sensor):
     nowdate=datetime.now()
     timeout=timedelta(seconds=4)
     try:
-        lasttime = datetime.fromtimestamp( \
-                data_from_graphite( \
-                    sensor_namespace.format(sensor))[0]['datapoints'][-1][1])
+        lasttime = datetime.fromtimestamp( get_last_sensor_data(sensor) )
+        log.debug("lasttime: %s"%lasttime)
+        log.debug("timeout : %s"%timeout)
+        log.debug("nowdate : %s"%nowdate)
         if lasttime + timeout > nowdate:
+            log.debug("ignoring duplicate activity of %d"%sensor)
             return json.dumps({'warn':'ignoring duplicate activity'})
+        log.debug("not ignoring sensor %d" %sensor)
+        log.debug("sending to graphite")
+        try:
+            sensor_to_graphite(sensor)
+        except Exception as e:
+            log.error(e)
 
-    except:
+        log.debug("publishing to chat")
         r.publish('chat',sensor)
         return json.dumps(True)
+
+    except:
+        return
+
 
 @app.route('/api/time')
 def current_time():
     return json.dumps(float(time()))
 
-@app.route('/api/sensors/<int:sensor>/last')
+
 def get_last_sensor_data(sensor):
-    return "not implemented"
-    q = data_from_graphite(sensor_namespace.format(sensor))
-    # q=r.lrange(sensor_namespace.format(sensor),-1,-1)[0]
-    return json.dumps(float(q.decode()))
+    last=0
+    try:
+        for data in reversed(data_from_graphite(sensor_namespace.format(sensor))[0]["datapoints"]):
+            val=data[0]
+            ts=data[1]
+            if val: 
+                last=ts
+                break
+    except: pass
+    return float(last)
+
+@app.route('/api/sensors/<int:sensor>/last')
+def get_last(sensor):
+    return json.dumps(get_last_sensor_data(sensor))
 
 
 @app.route('/api/sensors/<int:sensor>/all')
@@ -85,7 +136,6 @@ def get_all_sensor_data(sensor):
     #q=r.lrange(sensor_namespace.format(sensor),0,-1)
     return json.dumps([ float(i.decode()) for i in q ])
 
-    
 
 # def event_stream(delta):
 #     # delta must be datetime.timedelta
